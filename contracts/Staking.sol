@@ -1,7 +1,4 @@
 // SPDX-License-Identifier: UNLICENSED
-
-// contracts/FlanTokenVesting.sol
-// SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.5;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -12,7 +9,7 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 /*
- * FlanTokenVesting
+ * FlanTokenStaking
  *
 */
 contract FlanTokenStaking is Context, Ownable, ReentrancyGuard {
@@ -21,7 +18,7 @@ contract FlanTokenStaking is Context, Ownable, ReentrancyGuard {
     uint256 private _decimal=18;
     uint32 private _minLockDay=7;
 
-    uint256 totalStakedAmount = 0;
+    uint256 public totalStakedAmount = 0;
 
     struct Member{
         uint256 totalAmount;
@@ -61,13 +58,16 @@ contract FlanTokenStaking is Context, Ownable, ReentrancyGuard {
             stakingAddressAmount[msg.sender].totalAmount += amount_;
         }
         stakingAddressAmount[msg.sender].actionTime = uint32(block.timestamp);
-        _token.transferFrom(msg.sender, address(this), amount_);
-        emit Stake(_msgSender(), amount_);
+
+        _token.safeTransferFrom(msg.sender, address(this), amount_);
+        totalStakedAmount += amount_;
+        emit Stake(msg.sender, amount_);
     }
 
     function withdrawAmount(uint256 amount_) external payable {
         require(msg.sender != address(0x0), "Flan Staking: None address!");
         uint256 amount = _withdrawAmount(payable(msg.sender), amount_);
+        totalStakedAmount -= amount;
         emit WithdrawAmount(msg.sender, amount);
     }
 
@@ -75,6 +75,7 @@ contract FlanTokenStaking is Context, Ownable, ReentrancyGuard {
         require(msg.sender != address(0x0), "");
         uint256 amount = stakingAddressAmount[msg.sender].totalAmount;
         amount = _withdrawAmount(payable(msg.sender), amount);
+        totalStakedAmount -= amount;
         emit WithdrawAll(msg.sender, amount);
     }
 
@@ -82,7 +83,7 @@ contract FlanTokenStaking is Context, Ownable, ReentrancyGuard {
         require(amount_ > 0, "Flan Staking: requested amount == 0");
         require(stakingAddressAmount[address_].totalAmount >= amount_, "Flan Staking: Balance < requested amount");
         require(_getCurrentTime() >= stakingAddressAmount[address_].actionTime + _minLockDay * 3600, "Flan Staking: Lock Period");
-        _token.transfer(msg.sender, amount_);
+        _token.safeTransfer(msg.sender, amount_);
         stakingAddressAmount[msg.sender].totalAmount -= amount_;
         stakingAddressAmount[msg.sender].actionTime = uint32(block.timestamp);
         return amount_;
@@ -118,5 +119,13 @@ contract FlanTokenStaking is Context, Ownable, ReentrancyGuard {
 
     function _getCurrentTime() private view returns(uint32) {
         return uint32(block.timestamp);
+    }
+
+    function getTotalStakedAmount() public view returns(uint256) {
+        return totalStakedAmount;
+    }
+
+    function getTotalBalance() public view returns(uint256) {
+        return _token.balanceOf(address(this));
     }
 }
