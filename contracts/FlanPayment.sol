@@ -212,7 +212,7 @@ contract FlanPayment is Context, Ownable, ReentrancyGuard {
         }));
     }
 
-    event Paid(string indexed projectId_, string taskId_, address indexed senderAddress_, address receiptAddress_, uint256 taskEstimate);
+    event Paid(uint256 paymentId_, address indexed senderAddress_, address indexed receiptAddress_, string projectId_, string taskId_,  uint256 taskEstimate_, uint256 feeAmount_, bool isFLN_, uint32 paidTime);
     event Withdraw(address indexed address_, uint256 amount_, string indexed type_);
 
     function getStakedAmount(address address_) private view returns (uint256) {
@@ -262,7 +262,7 @@ contract FlanPayment is Context, Ownable, ReentrancyGuard {
         _paymentId++;
         paymentDataList[_paymentId] = paymentData;
 
-        emit Paid(projectId, taskId, msg.sender, receiptAddress, taskEstimate);
+        emit Paid(_paymentId, msg.sender, receiptAddress, projectId, taskId,  taskEstimate, feeAmount + taxFeeAmount, isFLN, _getCurrentTime());
     }
 
     function withdrawAllCUSD() external onlyOwner {

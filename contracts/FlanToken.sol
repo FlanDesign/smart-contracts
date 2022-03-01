@@ -5,8 +5,9 @@ pragma solidity 0.8.5;
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract Token is ERC20, Ownable {
-    constructor(uint256 initialSupply) ERC20("Test Token", "TEST") {
+contract FlanToken is ERC20, Ownable {
+    constructor() ERC20("Flan Token", "FLN") {
+        uint256 initialSupply = 100000000 * 10 ** decimals();
         _mint(_msgSender(), initialSupply);
     }
 

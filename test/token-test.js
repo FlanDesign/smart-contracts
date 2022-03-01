@@ -7,14 +7,14 @@ const Symbol = "TEST";
 const Decimals = BN.from(18);
 const OneToken = BN.from(10).pow(Decimals);
 
-describe("Token test", function () {
+describe("Flan Token test", function () {
     let tokenInst;
 
     const inititalSupply = OneToken.mul(1000);
 
     beforeEach(async () => {
         // deploy Token
-        const Token = await ethers.getContractFactory("Token");
+        const Token = await ethers.getContractFactory("FlanToken");
         tokenInst = await Token.deploy(inititalSupply);
     });
 

@@ -4,22 +4,19 @@ const { ethers } = require('hardhat');
 
 const BN = ethers.BigNumber;
 
-const Name = "Test Token";
-const Symbol = "TEST";
 const Decimals = BN.from(18);
 const OneToken = BN.from(10).pow(Decimals);
 const moment = require('moment')
 
-describe("Token test", function () {
+describe("Flan Vesting test", function () {
     let tokenInst, vesting;
 
-    const inititalSupply = OneToken.mul(100000000);
     const lockedTotalSupply = OneToken.mul(50000000);
 
     beforeEach(async () => {
         // deploy Token
-        const Token = await ethers.getContractFactory("Token");
-        tokenInst = await Token.deploy(inititalSupply);
+        const Token = await ethers.getContractFactory("FlanToken");
+        tokenInst = await Token.deploy();
 		
 		const FlanTokenVesting = await ethers.getContractFactory("FlanTokenVesting");
 		vesting = await FlanTokenVesting.deploy(tokenInst.address)
