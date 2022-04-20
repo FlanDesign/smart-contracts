@@ -138,21 +138,18 @@ contract FlanTokenStaking is Context, Ownable, ReentrancyGuard {
 */
 contract FlanPayment is Context, Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
-    IERC20 private _flanToken;
-    IERC20 private _cusdToken;
+    IERC20 public _flanToken;
+    IERC20 public _cusdToken;
     uint256 private _decimal = 18;
 
-    address private _stakingContractAddress;
+    address public _stakingContractAddress;
 
-    uint256 private _totalCUSDFeeAmount = 0;
-    uint256 private _developerCUSDBalance = 0;
-    uint256 private _totalFLNFeeAmount = 0;
-    uint256 private _developerFLNBalance = 0;
-    uint256 private _CUSDTaxFeeAmount = 0;
-    uint256 private _FLNTaxFeeAmount = 0;
-    uint256 private _paymentId = 0;
+    uint256 public _totalCUSDFeeAmount = 0;
+    uint256 public _totalFLNFeeAmount = 0;
+    uint256 public _CUSDTaxFeeAmount = 0;
+    uint256 public _FLNTaxFeeAmount = 0;
+    uint256 public _paymentId = 0;
 
-    address payable private _developerAddress = payable(address(0x91CfEDfdec464b7537885B59D70d87b25EdB79F0));
 
     struct FeePlan {
         string name;
@@ -174,6 +171,10 @@ contract FlanPayment is Context, Ownable, ReentrancyGuard {
     }
 
     mapping(uint256 => PaymentData) paymentDataList;
+
+    event Paid(uint256 paymentId_, address indexed senderAddress_, address indexed receiptAddress_, string projectId_, string taskId_, uint256 taskEstimate_, uint256 feeAmount_, bool isFLN_, uint32 paidTime);
+    event Withdraw(address indexed address_, uint256 amount_, string indexed type_);
+    event SetStakingContract(address contractAddress);
 
     constructor(address flanAddress_, address cUSDAddress_, address stakingContractAddress_) {
         require(cUSDAddress_ != address(0x0), "");
@@ -222,8 +223,11 @@ contract FlanPayment is Context, Ownable, ReentrancyGuard {
         }));
     }
 
-    event Paid(uint256 paymentId_, address indexed senderAddress_, address indexed receiptAddress_, string projectId_, string taskId_, uint256 taskEstimate_, uint256 feeAmount_, bool isFLN_, uint32 paidTime);
-    event Withdraw(address indexed address_, uint256 amount_, string indexed type_);
+    function setStakingContract(address stakingContractAddress_) external onlyOwner {
+        require(stakingContractAddress_ != address(0x0), "");
+        _stakingContractAddress = stakingContractAddress_;
+        emit SetStakingContract(stakingContractAddress_);
+    }
 
     function getStakedAmount(address address_) private view returns (uint256) {
         (uint256 amount, uint32 time) = FlanTokenStaking(_stakingContractAddress).getAmountOfMember(address_);
@@ -250,14 +254,12 @@ contract FlanPayment is Context, Ownable, ReentrancyGuard {
             _flanToken.safeTransferFrom(msg.sender, address(this), taskEstimate);
             _flanToken.safeTransfer(receiptAddress, taskEstimate - feeAmount - taxFeeAmount);
             _totalFLNFeeAmount += feeAmount;
-            _developerFLNBalance += feeAmount * 5 / 100;
             _FLNTaxFeeAmount += taxFeeAmount;
         } else {
             feeAmount = taskEstimate * feePlanList[freelancerGrade].cUSDFeePercent / 100;
             _cusdToken.safeTransferFrom(msg.sender, address(this), taskEstimate);
             _cusdToken.safeTransfer(receiptAddress, taskEstimate - feeAmount - taxFeeAmount);
             _totalCUSDFeeAmount += feeAmount;
-            _developerCUSDBalance += feeAmount * 5 / 100;
             _CUSDTaxFeeAmount += taxFeeAmount;
         }
         PaymentData memory paymentData = PaymentData({
@@ -277,26 +279,18 @@ contract FlanPayment is Context, Ownable, ReentrancyGuard {
 
     function withdrawAllCUSD() external onlyOwner {
         uint256 balance = _cusdToken.balanceOf(address(this));
-        balance = balance - _developerCUSDBalance;
         _cusdToken.safeTransfer(msg.sender, balance);
-        _cusdToken.safeTransfer(_developerAddress, _developerCUSDBalance);
-        _developerCUSDBalance = 0;
         _totalCUSDFeeAmount = 0;
         _CUSDTaxFeeAmount = 0;
         emit Withdraw(msg.sender, balance, "cUSD");
-        emit Withdraw(_developerAddress, _developerCUSDBalance, "cUSD");
     }
 
     function withdrawAllFLN() external onlyOwner {
         uint256 balance = _flanToken.balanceOf(address(this));
-        balance = balance - _developerFLNBalance;
         _flanToken.safeTransfer(msg.sender, balance);
-        _flanToken.safeTransfer(_developerAddress, _developerFLNBalance);
-        _developerFLNBalance = 0;
         _totalFLNFeeAmount = 0;
         _FLNTaxFeeAmount = 0;
         emit Withdraw(msg.sender, balance, "FLN");
-        emit Withdraw(_developerAddress, _developerFLNBalance, "FLN");
     }
 
     function withdrawOnlyTaxFee() external onlyOwner {
@@ -308,20 +302,6 @@ contract FlanPayment is Context, Ownable, ReentrancyGuard {
         emit Withdraw(msg.sender, _CUSDTaxFeeAmount, "cUSD: Tax Fee");
     }
 
-    function withdrawAllByDeveloper() external {
-        require(msg.sender == _developerAddress, "not developer");
-        _cusdToken.safeTransfer(_developerAddress, _developerCUSDBalance);
-        _flanToken.safeTransfer(_developerAddress, _developerFLNBalance);
-        _developerCUSDBalance = 0;
-        _developerFLNBalance = 0;
-        emit Withdraw(_developerAddress, _developerCUSDBalance, "cUSD");
-        emit Withdraw(_developerAddress, _developerFLNBalance, "FLN");
-    }
-
-    function getDeveloperBalance() external view returns (uint256, uint256){
-        require(msg.sender == _developerAddress, "not developer");
-        return (_developerCUSDBalance, _developerFLNBalance);
-    }
 
     function getPayment(uint256 paymentId_) public view returns (string memory, string memory, address, address, uint256, uint256, bool) {
         require(paymentId_ != 0, "paymentId is 0");
